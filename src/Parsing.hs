@@ -1,19 +1,12 @@
-module Parsing  where
+module Parsing where
 
+import Data (LispVal(..))
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
-             | String String
-             | Char Char
-             | Bool Bool
-             deriving(Show, Eq)
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!#$%&|*/:<=>?@^_~\\"
 
 spaces :: Parser ()
 spaces = skipMany1 space
@@ -21,25 +14,35 @@ spaces = skipMany1 space
 parseString :: Parser LispVal
 parseString = do
                 _ <- char '"'
-                x <- many (noneOf "\\\"" <|> (char '\\' >> char '"'))
+                -- x <- many (noneOf "\\\"" <|> (char '\\' >> char '"'))
+                x <- many  (try parseEscapedChar <|> noneOf "\\\"")
                 _ <- char '"'
                 return $ String x
+
+parseEscapedChar :: Parser Char
+parseEscapedChar = do
+  _ <- char '\\'
+  c <- anyChar
+  return $ case c of
+    'n'  -> '\n'
+    '"'  -> '\"'
+    'r'  -> '\r'
+    't'  -> '\t'
+    '\\' -> '\\'
+    _    -> ' '
+
+
 
 parseAtom :: Parser LispVal
 parseAtom = do
               first <- letter <|> symbol
-              rest <- many (letter <|> digit <|> symbol)
+              rest <- many (letter <|> digit <|> symbol <|> oneOf "+-")
               let atom = first:rest
               return $ case atom of
-                         "#t"  -> Bool True
-                         "#f"  -> Bool False
-                         _     -> Atom atom
+                         "#t"              -> Bool True
+                         "#f"              -> Bool False
+                         _                 -> Atom atom
 
-parseChar :: Parser LispVal
-parseChar = do
-              _ <- string "#\\"
-              x <- anyChar
-              return $ Char x
 
 parseNumber :: Parser LispVal
 parseNumber = do
@@ -68,8 +71,8 @@ parseQuoted = do
 
 
 parseExpr :: Parser LispVal
-parseExpr =  parseChar
-         <|> parseAtom
+parseExpr =  parseAtom
+         -- <|> parseChar
          <|> parseString
          <|> parseNumber
          <|> parseQuoted

@@ -1,7 +1,7 @@
 module Lib
     ( someFunc
     ) where
-        
+
 import System.Environment
 import Text.Parsec
 import Parsing
@@ -13,4 +13,4 @@ readExpr input = case parse parseExpr "lisp" input of
 someFunc :: IO ()
 someFunc = do
   args <- getArgs
-  putStrLn $ "Hello, " ++ readExpr (args !! 0)
+  putStrLn $ "Hello, " ++ readExpr (head args)
