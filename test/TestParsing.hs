@@ -6,21 +6,7 @@ import Test.Hspec
 import Test.QuickCheck hiding (Result)
 import qualified Text.Parsec as P
 
-
-instance Arbitrary LispVal where
-  arbitrary = let --arbitraryList         = resize 3 $ listOf arbitrary
-                  --arbitraryListNotEmpty = resize 3 $ listOf1 arbitrary
-                  arbitraryString       = resize 20 arbitrary
-              in
-              oneof [
-                      String     <$> arbitraryString
-                    , Bool       <$> arbitrary
-                    , Number     <$> arbitrary
-                    -- , Atom       <$> arbitraryString -- TODO fix random garbage chars
-                    -- TODO fix infinite list generation
-                    -- , List       <$> arbitraryList
-                    -- , DottedList <$> arbitraryListNotEmpty <*> arbitrary
-                    ]
+import TestArbitraryData()
 
 
 

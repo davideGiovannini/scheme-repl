@@ -1,16 +1,19 @@
 module Lib
-    ( someFunc
+    ( replFunc
     ) where
 
-import System.Environment
-import Text.Parsec
-import Parsing
+import Parsing(readExpr)
+import Evaluation(eval)
 
-readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
-                   Left err  -> "No match: "    ++ show err
-                   Right val -> "Found value: " ++ show val
-someFunc :: IO ()
-someFunc = do
-  args <- getArgs
-  putStrLn $ "Hello, " ++ readExpr (head args)
+import Control.Monad(forever)
+
+
+(|>) :: (a -> b) -> (b -> c) -> a -> c
+(|>) = flip (.)
+
+replFunc :: IO ()
+replFunc = forever $
+  putStrLn "λ:" >>
+  getLine >>= readExpr
+    |> eval
+    |> print
