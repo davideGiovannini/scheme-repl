@@ -12,3 +12,6 @@ A Scheme interpreter written in Haskell following this tutorial: [Write Yourself
 * Add support for [floats](http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4).
 * Add data types and parsers to support the full range of [Scheme numeric types](http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.1).
 * add more tests
+
+#### Evaluation
+* Implement the [cond](http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-7.html#%_idx_106) and [case](http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-7.html#%_idx_114) expressions.
