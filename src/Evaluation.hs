@@ -58,6 +58,8 @@ primitives = [ ("+",         numPlus)
              , ("<=",        numLE)
              , ("&&",        boolAnd)
              , ("||",        boolOr)
+             , ("not",       boolNot)
+
              , ("string=?",  strEq)
              , ("string<?",  strLessT)
              , ("string>?",  strGreatT)

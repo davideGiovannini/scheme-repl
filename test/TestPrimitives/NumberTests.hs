@@ -13,7 +13,21 @@ import TestPrimitives.Utils((===>))
 
 
 testNumberPrimitives :: SpecWith()
-testNumberPrimitives = describe "Number functions with n>=2 arguments" $ do
+testNumberPrimitives = describe "Number functions:" $ do
+  it "computes (+ 2 2) -> 4" $
+    (numPlus [Number 2, Number 2] ===> Number 4)
+  it "computes (- 2 2) -> 0" $
+    (numMinus [Number 2, Number 2] ===> Number 0)
+  it "computes (* 2 2) -> 4" $
+    (numMul [Number 2, Number 2] ===> Number 4)
+  it "computes (/ 2 2) -> 1" $
+    (numDiv [Number 2, Number 2] ===> Number 1)
+  testWithAtLeast2Nums
+
+
+
+testWithAtLeast2Nums :: SpecWith ()
+testWithAtLeast2Nums = describe "Number functions with n>=2 arguments" $ do
   it "addition between numbers works"    $ property testPlus
   it "subtraction between numbers works" $ property testMinus
   it "multiplication between numbers works" $ property testMul
@@ -27,6 +41,7 @@ testNumberPrimitives = describe "Number functions with n>=2 arguments" $ do
   it ">= test between numbers works" $ property testNumGreaterEq
   it "<= test between numbers works" $ property testNumLessEq
 
+
 type AtLeast2Nums = Integer -> Integer -> [Integer] -> Bool
 
 testNumToNumLispFun :: LispFunction -> (Integer -> Integer -> Integer) -> AtLeast2Nums
@@ -38,9 +53,12 @@ testNumToNumLispFun lispfun fun x y xs =
 
 
 testNumToBoolLispFun :: LispFunction -> (Integer -> Integer -> Bool) -> AtLeast2Nums
-testNumToBoolLispFun lispfun fun x y xs =
+testNumToBoolLispFun lispfun op x y xs =
     let numbers = Number x:Number y:map Number xs
-        result = all (fun x) $ y:xs
+        result = func (x:y:xs)
+        func (x1:y1:xs1) = if x1 `op` y1 == True then func (y1:xs1)
+                        else False
+        func _ = True
     in
     lispfun numbers ===> Bool result
 

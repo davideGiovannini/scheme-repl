@@ -4,7 +4,7 @@ module Evaluation.Primitives
     numPlus, numMinus, numMul, numDiv
   , numMod, numQuot, numRem, numEq
   , numLessT, numGreatT, numNotEq
-  , numGE, numLE, boolAnd, boolOr
+  , numGE, numLE, boolAnd, boolOr, boolNot
   , strEq, strLessT, strGreatT
   , strLE, strGE, isSymbol, isBool
   , isString, isNumber, isList
@@ -34,9 +34,13 @@ numGreatT = numBoolBinop (>)
 numGE     = numBoolBinop (>=)
 numLE     = numBoolBinop (<=)
 
-boolAnd, boolOr :: LispFunction
+boolAnd, boolOr, boolNot :: LispFunction
 boolAnd   = boolBoolBinop (&&)
 boolOr    = boolBoolBinop (||)
+boolNot [arg]  = return $ case arg of
+                   Bool False -> Bool True
+                   _          -> Bool False
+boolNot args = throwError $ NumArgs 1 args
 
 strEq, strLessT, strGreatT, strLE, strGE :: LispFunction
 strEq     = strBoolBinop (==)
@@ -70,11 +74,15 @@ unpackBool notBool  = throwError $ TypeMismatch "boolean" notBool
 
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> LispFunction
-boolBinop unpacker op args = if length args /= 2
-                             then throwError $ NumArgs 2 args
-                             else do left <- unpacker $ head args
-                                     right <- unpacker $ args !! 1
-                                     return $ Bool $ left `op` right
+boolBinop unpacker op (x:y:args) = do
+  list <- (sequence $ fmap unpacker (x:y:args))
+  return $ Bool (func list)
+  where func (x1:y1:xs) = if x1 `op` y1 == True then func (y1:xs)
+                        else False
+        func _ = True
+
+boolBinop _ _ args = throwError $ NumArgs 2 args
+
 
 numBoolBinop :: (Integer -> Integer -> Bool) -> LispFunction
 numBoolBinop  = boolBinop unpackNum
