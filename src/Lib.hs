@@ -6,14 +6,14 @@ import Parsing(readExpr)
 import Evaluation(eval)
 
 import Control.Monad(forever)
-
-
-(|>) :: (a -> b) -> (b -> c) -> a -> c
-(|>) = flip (.)
+import Control.Monad.Except
 
 replFunc :: IO ()
-replFunc = forever $
-  putStrLn "λ:" >>
-  getLine >>= readExpr
-    |> eval
-    |> print
+replFunc = forever $ do
+    putStrLn "λ:"
+    input <- getLine
+    let parsed = readExpr input
+    let evalued = parsed >>= eval
+    case runExcept evalued of
+      Right right -> print right
+      Left left   -> print left

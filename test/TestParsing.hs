@@ -9,7 +9,6 @@ import qualified Text.Parsec as P
 import TestArbitraryData()
 
 
-
 parsingTests :: SpecWith ()
 parsingTests =
     describe "Parsing tests" $ do

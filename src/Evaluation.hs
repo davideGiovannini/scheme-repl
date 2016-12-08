@@ -1,66 +1,80 @@
 module Evaluation (eval) where
 
-import Data(LispVal(..))
+import Data(LispVal(..), ThrowsError, LispError(..))
+import Control.Monad.Except(throwError)
 
 
-eval :: LispVal -> LispVal
-eval val@(String _) = val
-eval val@(Number _) = val
-eval val@(Bool   _) = val
-eval (List [Atom "quote", val]) = val
-eval (List (Atom func: args)) = apply func $ map eval args
-eval arg = arg
+eval :: LispVal -> ThrowsError LispVal
+eval val@(String _) = return val
+eval val@(Number _) = return val
+eval val@(Bool   _) = return val
+eval (List [Atom "quote", val]) = return val
+eval (List (Atom func: args)) = mapM eval args >>= apply func
+eval badform = throwError $ BadSpecialForm "Unrecognized special form" badform
 
-apply :: String -> [LispVal] -> LispVal
-apply func args = maybe (String $ "Unknown function " ++ func) ($ args) $ lookup func primitives
+apply :: String -> [LispVal] -> ThrowsError LispVal
+apply func args = maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
+                        ($ args)
+                        (lookup func primitives)
 
 
 
 
-primitives :: [(String, [LispVal] -> LispVal)]
+primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [ ("+", numericBinop (+))
              , ("-", numericBinop (-))
              , ("*", numericBinop (*))
              , ("/", numericBinop div)
-             , ("mod", numericBinop mod)
-             , ("quotient", numericBinop quot)
+             , ("mod",       numericBinop mod)
+             , ("quotient",  numericBinop quot)
              , ("remainder", numericBinop rem)
 
              , ("symbol?", isSymbol )
-             , ("bool?", isBool )
+             , ("bool?",   isBool )
              , ("string?", isString )
              , ("number?", isNumber )
-             , ("list?", isList )
+             , ("list?",   isList )
              ]
 
 
-numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
-numericBinop op params = Number $ foldl1 op $ map unpackNum params
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+numericBinop _           []  = throwError $ NumArgs 2 []
+numericBinop _ singleVal@[_] = throwError $ NumArgs 2 singleVal
+numericBinop op params        = mapM unpackNum params >>= return . Number . foldl1 op
 
-unpackNum :: LispVal -> Integer
-unpackNum (Number n) = n
+unpackNum :: LispVal -> ThrowsError Integer
+unpackNum (Number n) = return n
+unpackNum (String n) = let parsed = reads n in
+                           if null parsed
+                             then throwError $ TypeMismatch "number" $ String n
+                             else return $ fst $ parsed !! 0
 unpackNum (List [n]) = unpackNum n
-unpackNum _ = 0
+unpackNum notNum     = throwError $ TypeMismatch "number" notNum
 
 
 
-isSymbol :: [LispVal] -> LispVal
-isSymbol [Atom _] = Bool True
-isSymbol _        = Bool False
+isSymbol :: [LispVal] -> ThrowsError LispVal
+isSymbol [Atom _] = return $ Bool True
+isSymbol [_]      = return $ Bool False
+isSymbol badargs  = throwError $ NumArgs 1 badargs
 
-isString :: [LispVal] -> LispVal
-isString [String _] = Bool True
-isString _        = Bool False
+isString :: [LispVal] -> ThrowsError LispVal
+isString [String _] = return $ Bool True
+isString [_]        = return $ Bool False
+isString badargs    = throwError $ NumArgs 1 badargs
 
-isBool :: [LispVal] -> LispVal
-isBool [Bool _] = Bool True
-isBool _        = Bool False
+isBool :: [LispVal] -> ThrowsError LispVal
+isBool [Bool _] = return $ Bool True
+isBool [_]      = return $ Bool False
+isBool badargs  = throwError $ NumArgs 1 badargs
 
-isNumber :: [LispVal] -> LispVal
-isNumber [Number _] = Bool True
-isNumber _          = Bool False
+isNumber :: [LispVal] -> ThrowsError LispVal
+isNumber [Number _] = return $ Bool True
+isNumber [_]        = return $ Bool False
+isNumber badargs    = throwError $ NumArgs 1 badargs
 
 
-isList :: [LispVal] -> LispVal
-isList [List _] = Bool True
-isList _        = Bool False
+isList :: [LispVal] -> ThrowsError LispVal
+isList [List _] = return $ Bool True
+isList [_]      = return $ Bool False
+isList badargs  = throwError $ NumArgs 1 badargs
