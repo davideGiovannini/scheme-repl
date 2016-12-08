@@ -18,6 +18,7 @@ library
   other-modules:       Parsing
                      , Data
                      , Evaluation
+                     , Evaluation.Primitives
   exposed-modules:     Lib
   build-depends:       base   >= 4.7 && < 5
                      , parsec == 3.1.11
@@ -45,6 +46,9 @@ test-suite scheme-repl-test
   other-modules:       TestArbitraryData
                      , TestEvaluation
                      , TestParsing
+                     , TestPrimitives
+                     , TestPrimitives.Utils
+                     , TestPrimitives.NumberTests
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

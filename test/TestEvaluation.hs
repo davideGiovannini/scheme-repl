@@ -13,7 +13,8 @@ import TestArbitraryData()
 import Control.Monad.Except(runExcept)
 
 evaluationTests :: SpecWith ()
-evaluationTests = describe "Evaluation Tests" basicEval
+evaluationTests = describe "Evaluation Tests"
+                       basicEval
 
 readAndEval :: String -> ThrowsError LispVal
 readAndEval expr = readExpr expr >>= eval
@@ -29,7 +30,6 @@ basicEval = describe "Basic eval tests" $ do
   it "eval booleans to themselves " $ property boolsEvalToNumber
   it "eval quoted expr to expr itself" $ property quotedExprToUnQuoted
   arithmeticTest
-  it "needs more test!" $ False `shouldBe` True
 
 
 numbersEvalToNumber :: Integer -> Bool

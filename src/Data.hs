@@ -2,6 +2,7 @@ module Data
   ( LispVal(..)
   , LispError(..)
   , ThrowsError
+  , LispFunction
   )
 where
 
@@ -37,6 +38,7 @@ escapeString = concatMap $ \char -> case char of
                                       '\"' -> "\\\""
                                       c    -> [c]
 
+type LispFunction = [LispVal] -> ThrowsError LispVal
 
 data LispError = NumArgs Integer [LispVal]
                | TypeMismatch String LispVal
