@@ -1,12 +1,12 @@
 module Lib
-    ( replFunc
+    ( runRepl
     )
 where
 
 import System.IO
 
 import Parsing(readExpr)
-import Evaluation(eval)
+import Evaluation(eval, Env, emptyEnv, liftThrows)
 
 import Control.Monad(unless)
 import Control.Monad.Except
@@ -17,16 +17,20 @@ flushStr str = putStr str >> hFlush stdout
 readPrompt :: IO String
 readPrompt = flushStr "λ:" >> getLine
 
-readAndEval :: String -> IO ()
-readAndEval expr =
-  case runExcept replAction of
+readAndEval :: Env -> String -> IO ()
+readAndEval env expr = do
+  result <- runExceptT replAction
+  case result of
     Right val -> flushStr "> " >> print val
     Left val  -> flushStr "! " >> print val
-  where replAction = readExpr expr >>= eval
+  where replAction = liftThrows (readExpr expr) >>= eval env
 
 
-replFunc :: IO ()
-replFunc = do
+replFunc :: Env -> IO ()
+replFunc env = do
   input <- readPrompt
   unless (input == "quit") $
-    readAndEval input >> replFunc
+    readAndEval env input >> replFunc env
+
+runRepl :: IO ()
+runRepl = emptyEnv >>= replFunc
