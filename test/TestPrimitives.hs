@@ -13,13 +13,13 @@ import TestPrimitives.NumberTests
 import TestPrimitives.Utils
 
 
-primitivesTests :: SpecWith ()
+primitivesTests :: Spec
 primitivesTests = describe "Primitive functions Tests" $ do
                        equalityTests
                        testNumberPrimitives
 
 
-equalityTests :: SpecWith ()
+equalityTests :: Spec
 equalityTests = describe "Equal? and eqv tests" $
   it "a lispval is equal to itself" $ property testSelfEquals
 

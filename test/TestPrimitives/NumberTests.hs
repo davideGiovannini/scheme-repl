@@ -12,21 +12,21 @@ import TestArbitraryData()
 import TestPrimitives.Utils((===>))
 
 
-testNumberPrimitives :: SpecWith()
+testNumberPrimitives :: Spec
 testNumberPrimitives = describe "Number functions:" $ do
-  it "computes (+ 2 2) -> 4" $
+  it "computes (+ 2 2) -> 4"
     (numPlus [Number 2, Number 2] ===> Number 4)
-  it "computes (- 2 2) -> 0" $
+  it "computes (- 2 2) -> 0"
     (numMinus [Number 2, Number 2] ===> Number 0)
-  it "computes (* 2 2) -> 4" $
+  it "computes (* 2 2) -> 4"
     (numMul [Number 2, Number 2] ===> Number 4)
-  it "computes (/ 2 2) -> 1" $
+  it "computes (/ 2 2) -> 1"
     (numDiv [Number 2, Number 2] ===> Number 1)
   testWithAtLeast2Nums
 
 
 
-testWithAtLeast2Nums :: SpecWith ()
+testWithAtLeast2Nums :: Spec
 testWithAtLeast2Nums = describe "Number functions with n>=2 arguments" $ do
   it "addition between numbers works"    $ property testPlus
   it "subtraction between numbers works" $ property testMinus
@@ -56,8 +56,7 @@ testNumToBoolLispFun :: LispFunction -> (Integer -> Integer -> Bool) -> AtLeast2
 testNumToBoolLispFun lispfun op x y xs =
     let numbers = Number x:Number y:map Number xs
         result = func (x:y:xs)
-        func (x1:y1:xs1) = if x1 `op` y1 == True then func (y1:xs1)
-                        else False
+        func (x1:y1:xs1) = ((x1 `op` y1) && func (y1 : xs1))
         func _ = True
     in
     lispfun numbers ===> Bool result

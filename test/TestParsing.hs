@@ -9,7 +9,7 @@ import qualified Text.Parsec as P
 import TestArbitraryData()
 
 
-parsingTests :: SpecWith ()
+parsingTests :: Spec
 parsingTests =
     describe "Parsing tests" $ do
         parsingNumbers
@@ -34,26 +34,26 @@ parseString :: String -> Result
 parseString = parser "string"
 
 
-parsingStrings :: SpecWith ()
+parsingStrings :: Spec
 parsingStrings = describe "Parsing Strings" $ do
   emptyString
   normalString
   escapedQuotesString
   escapedCharacters
 
-emptyString :: SpecWith ()
+emptyString :: Spec
 emptyString = it "can parse empty string" $
   parseString "\"\"" `parses` String ""
 
-normalString :: SpecWith ()
+normalString :: Spec
 normalString = it "can parse \"Hello World!\"" $
   parseString "\"Hello World!\"" `parses` String "Hello World!"
 
-escapedQuotesString :: SpecWith ()
+escapedQuotesString :: Spec
 escapedQuotesString = it "can parse a string with \\\"escaped quotes \\\" " $
   parseString "\"\\\"\"" `parses` String "\""
 
-escapedCharacters :: SpecWith ()
+escapedCharacters :: Spec
 escapedCharacters = it "can parse a string with \\\" \\n \\t \\r \\\\" $
   parseString "\" \\n\\r\\\\ \"" `parses` String " \n\r\\ "
 
@@ -64,7 +64,7 @@ escapedCharacters = it "can parse a string with \\\" \\n \\t \\r \\\\" $
 parseNumber :: String -> Result
 parseNumber = parser "number"
 
-parsingNumbers :: SpecWith ()
+parsingNumbers :: Spec
 parsingNumbers = describe "Parsing integers:" $ do
     it "parses a random integer" $ property prop_integerAreParsed
     it "parses +10" $
@@ -80,7 +80,7 @@ prop_integerAreParsed num = parseNumber (show num) `parses` Number num
 parseList :: String -> Result
 parseList = parser "list"
 
-parsingLists :: SpecWith()
+parsingLists :: Spec
 parsingLists = describe "Parsing lists" $ do
   it "parses an empty list" $
     parseList "()" `parses` List []
@@ -95,7 +95,7 @@ parsingLists = describe "Parsing lists" $ do
 parseDotList :: String -> Result
 parseDotList = parser "dotted list"
 
-parsingDottedLists :: SpecWith()
+parsingDottedLists :: Spec
 parsingDottedLists = describe "Parsing dotted lists" $
   it "parses dotted list (#t . #t)" $
     parseDotList "(#t . #t)" `parses` DottedList [Bool True] (Bool True)
@@ -103,7 +103,7 @@ parsingDottedLists = describe "Parsing dotted lists" $
 
 -- SHOW
 
-parsingItself :: SpecWith ()
+parsingItself :: Spec
 parsingItself = describe "parsing string repr of LispVals" $ do
   it "can parse show repr of String" prop_parseShowString
   it "can parse show repr of Number" prop_parseShowNumber
