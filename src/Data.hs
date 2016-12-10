@@ -3,11 +3,16 @@ module Data
   , LispError(..)
   , ThrowsError
   , LispFunction
+  , IOLispFunction
+  , Env
+  , emptyEnv
+  , IOThrowsError
   )
 where
 
 import Text.Parsec(ParseError)
 import Control.Monad.Except
+import Data.IORef
 
 data LispVal = Atom String
              | List [LispVal]
@@ -15,7 +20,23 @@ data LispVal = Atom String
              | Number Integer
              | String String
              | Bool Bool
-             deriving(Eq)
+             | PrimitiveFunc LispFunction
+             | Func { _params :: [String]
+                    , _vararg :: Maybe String
+                    , _body   :: [LispVal]
+                    , _closure :: Env
+                    }
+
+instance Eq LispVal where
+  (Atom a)   == (Atom b)   = a == b
+  (Number a) == (Number b) = a == b
+  (String a) == (String b) = a == b
+  (Bool a)   == (Bool b)   = a == b
+  (List a)   == (List b)   = a == b
+  (DottedList a a1) == (DottedList b b1) = a == b && a1 == b1
+  _ == _ = False
+
+
 
 instance Show  LispVal where
   show (String contents)        = "\"" ++ escapeString contents ++ "\""
@@ -25,6 +46,11 @@ instance Show  LispVal where
   show (Bool False)             = "#f"
   show (List contents)          = "(" ++ unwordsList contents ++ ")"
   show (DottedList head_ tail_) = "(" ++ unwordsList head_ ++ " . " ++ show tail_ ++ ")"
+  show (PrimitiveFunc _)        = "<primitive>"
+  show (Func args varargs _ _) =
+    "(lambda (" ++ unwords (map show args) ++
+        maybe "" (" . "++) varargs
+        ++ ") ...)"
 
 
 unwordsList :: [LispVal] -> String
@@ -61,4 +87,13 @@ instance Show LispError where
   show (Default message)             = "Default error: " ++ message
 
 
+
 type ThrowsError = Except LispError
+
+type Env = IORef [(String, IORef LispVal)]
+
+emptyEnv :: IO Env
+emptyEnv = newIORef []
+
+type IOThrowsError = ExceptT LispError IO
+type IOLispFunction = [LispVal] -> IOThrowsError LispVal

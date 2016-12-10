@@ -6,7 +6,8 @@ where
 import System.IO
 
 import Parsing(readExpr)
-import Evaluation(eval, Env, emptyEnv, liftThrows)
+import Evaluation(eval, liftThrows, primitiveEnv)
+import Data(Env)
 
 import Control.Monad(unless)
 import Control.Monad.Except
@@ -33,4 +34,4 @@ replFunc env = do
     readAndEval env input >> replFunc env
 
 runRepl :: IO ()
-runRepl = emptyEnv >>= replFunc
+runRepl = primitiveEnv >>= replFunc

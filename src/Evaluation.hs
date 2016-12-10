@@ -1,9 +1,7 @@
 module Evaluation
   ( eval
-  , IOThrowsError
-  , emptyEnv
-  , Env
   , liftThrows
+  , primitiveEnv
   , bindVars)
 where
 
@@ -11,21 +9,19 @@ import Data( LispVal(..)
            , ThrowsError
            , LispError(..)
            , LispFunction
+           , IOLispFunction
+           , Env
+           , emptyEnv
+           , IOThrowsError
            )
-import Control.Monad.Except(throwError, ExceptT, mapExceptT, liftIO)
+import Control.Monad.Except(throwError, mapExceptT, liftIO)
 import Data.Functor.Identity(runIdentity)
+import Data.Maybe(isJust, isNothing)
 import Data.IORef
-import Data.Maybe(isJust)
 
 import Evaluation.Primitives
 
 
-type Env = IORef [(String, IORef LispVal)]
-
-emptyEnv :: IO Env
-emptyEnv = newIORef []
-
-type IOThrowsError = ExceptT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows = mapExceptT (return.runIdentity)
@@ -70,30 +66,69 @@ eval _ val@(Number _) = return val
 eval _ val@(Bool   _) = return val
 eval env (Atom atom)    = getVar env atom
 eval _   (List [Atom "quote", val]) = return val
-eval env (List [Atom "if", p, c, a]) = control_if env p c a
+eval env (List [Atom "if", p, c, a]) = controlIf env p c a
 eval env (List [Atom "set!", Atom var, form]) =
      eval env form >>= setVar env var
 eval env (List [Atom "define", Atom var, form]) =
      eval env form >>= defineVar env var
-eval env (List (Atom func: args)) = mapM (eval env) args >>= liftThrows . apply func
 
+eval env (List (Atom "define" : List (Atom var : params) : body)) =
+     makeNormalFunc env params body >>= defineVar env var
+eval env (List (Atom "define" : DottedList (Atom var : params) varargs : body)) =
+     makeVarArgs varargs env params body >>= defineVar env var
+eval env (List (Atom "lambda" : List params : body)) =
+     makeNormalFunc env params body
+eval env (List (Atom "lambda" : DottedList params varargs : body)) =
+     makeVarArgs varargs env params body
+eval env (List (Atom "lambda" : varargs@(Atom _) : body)) =
+     makeVarArgs varargs env [] body
+eval env (List (Atom "begin":first:rest)) = controlBegin env (first:rest)
+
+eval env (List (function : args)) = do
+     func <- eval env function
+     argVals <- mapM (eval env) args
+     apply func argVals
 
 eval _ badform = throwError $ BadSpecialForm "Unrecognized special form" badform
 
-apply :: String -> LispFunction
-apply func args = maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
-                        ($ args)
-                        (lookup func primitives)
+apply :: LispVal -> IOLispFunction
+apply (PrimitiveFunc func) args = liftThrows $ func args
+apply (Func params varargs body closure) args =
+      if num params /= num args && isNothing varargs
+         then throwError $ NumArgs (num params) args
+         else liftIO (bindVars closure $ zip params args) >>= bindVarArgs varargs >>= evalBody
+      where remainingArgs = drop (length params) args
+            num = toInteger . length
+            evalBody env = last <$> mapM (eval env) body
+            bindVarArgs arg env = case arg of
+                Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
+                Nothing -> return env
+apply _ _ = undefined
 
-
-control_if :: Env -> LispVal -> LispVal -> LispVal -> IOThrowsError LispVal
-control_if env predicate consequence alternative =
+controlIf :: Env -> LispVal -> LispVal -> LispVal -> IOThrowsError LispVal
+controlIf env predicate consequence alternative =
   do result <- eval env predicate
      case result of
        Bool False -> eval env alternative
        _          -> eval env consequence
 
+controlBegin :: Env -> IOLispFunction
+controlBegin env (first:rest) = last <$> mapM (eval env) (first:rest)
+controlBegin _ []             = throwError $ BadSpecialForm "Begin needs at least 1 expression" (List [])
 
+
+makeFunc :: Maybe String -> Env -> [LispVal] -> IOLispFunction
+makeFunc varargs env params body = return $ Func (map show params) varargs body env
+
+makeNormalFunc :: Env -> [LispVal] -> IOLispFunction
+makeNormalFunc = makeFunc Nothing
+
+makeVarArgs :: LispVal -> Env -> [LispVal] -> IOLispFunction
+makeVarArgs = makeFunc . Just . show
+
+primitiveEnv :: IO Env
+primitiveEnv = emptyEnv >>= flip bindVars ( map makePrimitiveFunc primitives)
+     where makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
 
 primitives :: [(String, LispFunction)]
 primitives = [ ("+",         numPlus)
