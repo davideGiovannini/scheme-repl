@@ -8,6 +8,7 @@ import Control.Monad.Except(throwError)
 import Data (LispVal(..), ThrowsError, LispError(Parser))
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Text.Parsec (manyTill, endOfLine)
+import qualified Text.Parsec as P
 
 
 
@@ -90,7 +91,11 @@ parseExpr = do
 
 
 comment :: Parser ()
-comment = char ';' >> manyTill anyChar endOfLine >> return ()
+comment = do
+  P.spaces
+  _ <- char ';'
+  _ <- manyTill anyChar (skipMany1 endOfLine)
+  return ()
 
 
 readOrThrow :: Parser a -> String -> ThrowsError a
