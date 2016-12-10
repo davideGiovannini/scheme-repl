@@ -19,6 +19,7 @@ library
                      , Data
                      , Evaluation
                      , Evaluation.Primitives
+                     , Evaluation.IOPrimitives
   exposed-modules:     Lib
   build-depends:       base   >= 4.7 && < 5
                      , parsec == 3.1.11

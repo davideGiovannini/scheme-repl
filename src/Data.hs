@@ -7,12 +7,15 @@ module Data
   , Env
   , emptyEnv
   , IOThrowsError
+  , liftThrows
   )
 where
 
 import Text.Parsec(ParseError)
 import Control.Monad.Except
+import Data.Functor.Identity(runIdentity)
 import Data.IORef
+import System.IO(Handle)
 
 data LispVal = Atom String
              | List [LispVal]
@@ -26,6 +29,8 @@ data LispVal = Atom String
                     , _body   :: [LispVal]
                     , _closure :: Env
                     }
+             | IOFunc IOLispFunction
+             | Port Handle
 
 instance Eq LispVal where
   (Atom a)   == (Atom b)   = a == b
@@ -47,10 +52,11 @@ instance Show  LispVal where
   show (List contents)          = "(" ++ unwordsList contents ++ ")"
   show (DottedList head_ tail_) = "(" ++ unwordsList head_ ++ " . " ++ show tail_ ++ ")"
   show (PrimitiveFunc _)        = "<primitive>"
-  show (Func args varargs _ _) =
-    "(lambda (" ++ unwords (map show args) ++
-        maybe "" (" . "++) varargs
-        ++ ") ...)"
+  show (Func args varargs _ _)  = "(lambda (" ++ unwords (map show args) ++
+                                      maybe "" (" . "++) varargs
+                                      ++ ") ...)"
+  show (Port _)                 = "<IO port>"
+  show (IOFunc _)               = "<IO primitive>"
 
 
 unwordsList :: [LispVal] -> String
@@ -97,3 +103,6 @@ emptyEnv = newIORef []
 
 type IOThrowsError = ExceptT LispError IO
 type IOLispFunction = [LispVal] -> IOThrowsError LispVal
+
+liftThrows :: ThrowsError a -> IOThrowsError a
+liftThrows = mapExceptT (return.runIdentity)

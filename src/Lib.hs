@@ -1,13 +1,15 @@
 module Lib
-    ( runRepl
+    (
+      runRepl
+    , runOne
     )
 where
 
 import System.IO
 
 import Parsing(readExpr)
-import Evaluation(eval, liftThrows, primitiveEnv)
-import Data(Env)
+import Evaluation(eval, liftThrows, primitiveEnv, bindVars)
+import Data(Env, LispVal(..))
 
 import Control.Monad(unless)
 import Control.Monad.Except
@@ -35,3 +37,10 @@ replFunc env = do
 
 runRepl :: IO ()
 runRepl = primitiveEnv >>= replFunc
+
+runOne :: [String] -> IO ()
+runOne args = do
+    env <- primitiveEnv >>= flip bindVars [("args", List $ map String $ drop 1 args)]
+    runIOThrows (show <$> eval env (List [Atom "load", String (head args)]))
+        >>= hPutStrLn stderr
+    where runIOThrows action = either show show <$> runExceptT action

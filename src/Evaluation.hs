@@ -6,25 +6,23 @@ module Evaluation
 where
 
 import Data( LispVal(..)
-           , ThrowsError
            , LispError(..)
            , LispFunction
            , IOLispFunction
            , Env
            , emptyEnv
            , IOThrowsError
+           , liftThrows
            )
-import Control.Monad.Except(throwError, mapExceptT, liftIO)
-import Data.Functor.Identity(runIdentity)
+import Control.Monad.Except(throwError, liftIO)
 import Data.Maybe(isJust, isNothing)
 import Data.IORef
+import System.IO(IOMode(ReadMode,WriteMode))
 
 import Evaluation.Primitives
+import Evaluation.IOPrimitives
 
 
-
-liftThrows :: ThrowsError a -> IOThrowsError a
-liftThrows = mapExceptT (return.runIdentity)
 
 isBound :: Env -> String -> IO Bool
 isBound envRef var = fmap (isJust . lookup var) (readIORef envRef)
@@ -83,6 +81,7 @@ eval env (List (Atom "lambda" : DottedList params varargs : body)) =
 eval env (List (Atom "lambda" : varargs@(Atom _) : body)) =
      makeVarArgs varargs env [] body
 eval env (List (Atom "begin":first:rest)) = controlBegin env (first:rest)
+eval env (List [Atom "load", String filename]) = load filename >>= fmap last . mapM (eval env)
 
 eval env (List (function : args)) = do
      func <- eval env function
@@ -103,7 +102,8 @@ apply (Func params varargs body closure) args =
             bindVarArgs arg env = case arg of
                 Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
                 Nothing -> return env
-apply _ _ = undefined
+apply (IOFunc func) args = func args
+apply f args = throwError $ BadSpecialForm "Unrecognized special form" (List $ f:args)
 
 controlIf :: Env -> LispVal -> LispVal -> LispVal -> IOThrowsError LispVal
 controlIf env predicate consequence alternative =
@@ -126,9 +126,11 @@ makeNormalFunc = makeFunc Nothing
 makeVarArgs :: LispVal -> Env -> [LispVal] -> IOLispFunction
 makeVarArgs = makeFunc . Just . show
 
+
 primitiveEnv :: IO Env
-primitiveEnv = emptyEnv >>= flip bindVars ( map makePrimitiveFunc primitives)
-     where makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
+primitiveEnv = emptyEnv >>= flip bindVars (map (mkfunc IOFunc) ioPrimitives
+                                             ++ map (mkfunc PrimitiveFunc) primitives)
+     where mkfunc constructor (var, func) = (var, constructor func)
 
 primitives :: [(String, LispFunction)]
 primitives = [ ("+",         numPlus)
@@ -167,3 +169,20 @@ primitives = [ ("+",         numPlus)
              , ("eq?",       eqv)
              , ("equal?",    equal)
              ]
+
+
+ioPrimitives :: [(String, IOLispFunction)]
+ioPrimitives = [("apply", applyProc),
+                ("open-input-file", makePort ReadMode),
+                ("open-output-file", makePort WriteMode),
+                ("close-input-port", closePort),
+                ("close-output-port", closePort),
+                ("read", readProc),
+                ("write", writeProc),
+                ("read-contents", readContents),
+                ("read-all", readAll)]
+
+applyProc :: IOLispFunction
+applyProc [func, List args] = apply func args
+applyProc (func : args)     = apply func args
+applyProc args              = throwError $ BadSpecialForm "Bad apply form" (List args)
