@@ -7,6 +7,7 @@ where
 import Control.Monad.Except(throwError)
 import Data (LispVal(..), ThrowsError, LispError(Parser))
 import Text.ParserCombinators.Parsec hiding (spaces)
+import Text.Parsec (manyTill, endOfLine)
 
 
 
@@ -76,7 +77,9 @@ parseQuoted = do
 
 
 parseExpr :: Parser LispVal
-parseExpr =  try parseNumber
+parseExpr = do
+  skipMany comment
+  try parseNumber
          <|> parseAtom
          <|> parseString
          <|> parseQuoted
@@ -85,6 +88,9 @@ parseExpr =  try parseNumber
                 _ <- char ')'
                 return x
 
+
+comment :: Parser ()
+comment = char ';' >> manyTill anyChar endOfLine >> return ()
 
 
 readOrThrow :: Parser a -> String -> ThrowsError a
@@ -96,4 +102,4 @@ readExpr :: String -> ThrowsError LispVal
 readExpr = readOrThrow parseExpr
 
 readExprList :: String -> ThrowsError [LispVal]
-readExprList = readOrThrow (endBy parseExpr spaces)
+readExprList = readOrThrow $ endBy parseExpr spaces
